@@ -107,7 +107,11 @@ func process() {
 
 	queue := tcpQueue
 	for conn := range queue {
-		go handleTCPConn(conn)
+		var mu sync.Mutex
+		connCounter := 1
+		doneCounter := 2
+		go handleTCPConn(conn, false, &mu, &connCounter, &doneCounter)
+		go handleTCPConn(conn, true, &mu, &connCounter, &doneCounter)
 	}
 }
 
@@ -241,8 +245,15 @@ func handleUDPConn(packet *inbound.PacketAdapter) {
 	}()
 }
 
-func handleTCPConn(localConn C.ServerAdapter) {
-	defer localConn.Close()
+func handleTCPConn(localConn C.ServerAdapter, directConn bool, mu *sync.Mutex, connCounter *int, doneCounter *int) {
+	defer func() {
+		mu.Lock()
+		*doneCounter--
+		if *doneCounter == 0 {
+			localConn.Close()
+		}
+		mu.Unlock()
+	}()
 
 	metadata := localConn.Metadata()
 	if !metadata.Valid() {
@@ -256,6 +267,14 @@ func handleTCPConn(localConn C.ServerAdapter) {
 	}
 
 	proxy, rule, err := resolveMetadata(metadata)
+	if directConn {
+		if proxy.Name() != "DIRECT" && metadata.DstPort != "53" {
+			proxy = proxies["DIRECT"]
+			rule = nil
+		} else {
+			return
+		}
+	}
 	if err != nil {
 		log.Warnln("[Metadata] parse failed: %s", err.Error())
 		return
@@ -266,6 +285,14 @@ func handleTCPConn(localConn C.ServerAdapter) {
 		log.Warnln("dial %s to %s error: %s", proxy.Name(), metadata.String(), err.Error())
 		return
 	}
+	mu.Lock()
+	if *connCounter == 0 {
+		remoteConn.Close()
+		mu.Unlock()
+		return
+	}
+	*connCounter = 0
+	mu.Unlock()
 	remoteConn = newTCPTracker(remoteConn, DefaultManager, metadata, rule)
 	defer remoteConn.Close()
 
