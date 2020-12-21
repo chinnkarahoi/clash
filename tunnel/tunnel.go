@@ -215,6 +215,9 @@ func handleUDPConn(packet *inbound.PacketAdapter) {
 		}()
 
 		proxy, rule, err := resolveMetadata(metadata)
+		if proxy.Name() == "DIRECT" && metadata.DstPort == "53" {
+			return
+		}
 		if err != nil {
 			log.Warnln("[UDP] Parse metadata failed: %s", err.Error())
 			return
