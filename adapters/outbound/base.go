@@ -120,12 +120,12 @@ func (p *Proxy) dial(metadata *C.Metadata, timeout time.Duration) (C.Conn, error
 	defer cancel()
 	ret := make(chan C.Conn)
 	for i := 0; i < 3; i++ {
-		go func(ctx context.Context) {
+		go func() {
 			conn, err := p.DialContext(ctx, metadata)
 			if err == nil {
 				ret <- conn
 			}
-		}(ctx)
+		}()
 	}
 	select {
 	case conn := <-ret:
