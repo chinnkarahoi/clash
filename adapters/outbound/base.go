@@ -119,7 +119,7 @@ func (p *Proxy) dial(metadata *C.Metadata, timeout time.Duration) (C.Conn, error
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	ret := make(chan C.Conn)
-	for i := 0; i < 3; i++ {
+	for i := 0; i < 2; i++ {
 		go func() {
 			conn, err := p.DialContext(ctx, metadata)
 			if err == nil {
