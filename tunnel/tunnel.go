@@ -250,6 +250,10 @@ func handleTCPConn(localConn C.ServerAdapter, directConn bool, mu *sync.Mutex, c
 		mu.Lock()
 		*doneCounter--
 		if *doneCounter == 0 {
+			if *connCounter > 0 {
+				log.Warnln("dial TCP to %s error: %s", localConn.Metadata().String())
+				return
+			}
 			localConn.Close()
 		}
 		mu.Unlock()
@@ -282,16 +286,17 @@ func handleTCPConn(localConn C.ServerAdapter, directConn bool, mu *sync.Mutex, c
 
 	remoteConn, err := proxy.Dial(metadata)
 	if err != nil {
-		log.Warnln("dial %s to %s error: %s", proxy.Name(), metadata.String(), err.Error())
 		return
 	}
 	mu.Lock()
 	if *connCounter == 0 {
 		remoteConn.Close()
+	}
+	if *connCounter <= 0 {
 		mu.Unlock()
 		return
 	}
-	*connCounter = 0
+	*connCounter--
 	mu.Unlock()
 	remoteConn = newTCPTracker(remoteConn, DefaultManager, metadata, rule)
 	defer remoteConn.Close()
@@ -304,7 +309,7 @@ func handleTCPConn(localConn C.ServerAdapter, directConn bool, mu *sync.Mutex, c
 	case mode == Direct:
 		log.Infoln("[TCP] %s --> %v using DIRECT", metadata.SourceAddress(), metadata.String())
 	default:
-		log.Infoln("[TCP] %s --> %v doesn't match any rule using DIRECT", metadata.SourceAddress(), metadata.String())
+		log.Infoln("[TCP] %s --> %v using DIRECT", metadata.SourceAddress(), metadata.String())
 	}
 
 	switch adapter := localConn.(type) {
