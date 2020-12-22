@@ -104,9 +104,31 @@ func (p *Proxy) Alive() bool {
 }
 
 func (p *Proxy) Dial(metadata *C.Metadata) (C.Conn, error) {
+	conn, err := p.dial(metadata)
+	if err == nil {
+		return conn, err
+	}
+	return p.dial(metadata)
+}
+
+func (p *Proxy) dial(metadata *C.Metadata) (C.Conn, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), tcpTimeout)
 	defer cancel()
-	return p.DialContext(ctx, metadata)
+	ret := make(chan C.Conn)
+	for i := 0; i < 3; i++ {
+		go func(ctx context.Context) {
+			conn, err := p.DialContext(ctx, metadata)
+			if err == nil {
+				ret <- conn
+			}
+		}(ctx)
+	}
+	select {
+	case conn := <-ret:
+		return conn, nil
+	case <-ctx.Done():
+		return nil, errors.New("timeout")
+	}
 }
 
 func (p *Proxy) DialContext(ctx context.Context, metadata *C.Metadata) (C.Conn, error) {
