@@ -104,15 +104,19 @@ func (p *Proxy) Alive() bool {
 }
 
 func (p *Proxy) Dial(metadata *C.Metadata) (C.Conn, error) {
-	conn, err := p.dial(metadata)
-	if err == nil {
-		return conn, err
+	timeout := tcpTimeout
+	for i := 0; i < 3; i++ {
+		conn, err := p.dial(metadata, timeout)
+		if err == nil {
+			return conn, err
+		}
+		timeout += time.Second
 	}
-	return p.dial(metadata)
+	return nil, errors.New("timeout")
 }
 
-func (p *Proxy) dial(metadata *C.Metadata) (C.Conn, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), tcpTimeout)
+func (p *Proxy) dial(metadata *C.Metadata, timeout time.Duration) (C.Conn, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	ret := make(chan C.Conn)
 	for i := 0; i < 3; i++ {

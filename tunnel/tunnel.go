@@ -215,6 +215,9 @@ func handleUDPConn(packet *inbound.PacketAdapter) {
 		}()
 
 		proxy, rule, err := resolveMetadata(metadata)
+		if proxy.Name() == "DIRECT" && metadata.DstPort == "53" {
+			return
+		}
 		if err != nil {
 			log.Warnln("[UDP] Parse metadata failed: %s", err.Error())
 			return
@@ -272,12 +275,11 @@ func handleTCPConn(localConn C.ServerAdapter, directConn bool, mu *sync.Mutex, c
 
 	proxy, rule, err := resolveMetadata(metadata)
 	if directConn {
-		if proxy.Name() != "DIRECT" && metadata.DstPort != "53" {
-			proxy = proxies["DIRECT"]
-			rule = nil
-		} else {
-			return
-		}
+		proxy = proxies["DIRECT"]
+		rule = nil
+	}
+	if proxy.Name() == "DIRECT" && metadata.DstPort == "53" {
+		return
 	}
 	if err != nil {
 		log.Warnln("[Metadata] parse failed: %s", err.Error())
