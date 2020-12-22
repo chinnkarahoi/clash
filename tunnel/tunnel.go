@@ -251,7 +251,7 @@ func handleTCPConn(localConn C.ServerAdapter, directConn bool, mu *sync.Mutex, c
 		*doneCounter--
 		if *doneCounter == 0 {
 			if *connCounter > 0 {
-				log.Warnln("dial TCP to %s error: %s", localConn.Metadata().String())
+				log.Warnln("dial TCP to %s error", localConn.Metadata().String())
 				return
 			}
 			localConn.Close()
