@@ -232,13 +232,13 @@ func handleUDPConn(packet *inbound.PacketAdapter) {
 
 		switch true {
 		case rule != nil:
-			log.Infoln("[UDP] %s --> %v match %s(%s) using %s", metadata.SourceAddress(), metadata.String(), rule.RuleType().String(), rule.Payload(), rawPc.Chains().String())
+			log.Infoln("[UDP] %s --> %v using %s", metadata.SourceAddress(), metadata.String(), rawPc.Chains().String())
 		case mode == Global:
 			log.Infoln("[UDP] %s --> %v using GLOBAL", metadata.SourceAddress(), metadata.String())
 		case mode == Direct:
 			log.Infoln("[UDP] %s --> %v using DIRECT", metadata.SourceAddress(), metadata.String())
 		default:
-			log.Infoln("[UDP] %s --> %v doesn't match any rule using DIRECT", metadata.SourceAddress(), metadata.String())
+			log.Infoln("[UDP] %s --> %v using DIRECT", metadata.SourceAddress(), metadata.String())
 		}
 
 		go handleUDPToLocal(packet.UDPPacket, pc, key, fAddr)
@@ -305,7 +305,7 @@ func handleTCPConn(localConn C.ServerAdapter, directConn bool, mu *sync.Mutex, c
 
 	switch true {
 	case rule != nil:
-		log.Infoln("[TCP] %s --> %v match %s(%s) using %s", metadata.SourceAddress(), metadata.String(), rule.RuleType().String(), rule.Payload(), remoteConn.Chains().String())
+		log.Infoln("[TCP] %s --> %v using %s", metadata.SourceAddress(), metadata.String(), remoteConn.Chains().String())
 	case mode == Global:
 		log.Infoln("[TCP] %s --> %v using GLOBAL", metadata.SourceAddress(), metadata.String())
 	case mode == Direct:
