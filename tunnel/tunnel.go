@@ -5,6 +5,7 @@ import (
 	"net"
 	"runtime"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/Dreamacro/clash/adapters/inbound"
@@ -248,6 +249,8 @@ func handleUDPConn(packet *inbound.PacketAdapter) {
 	}()
 }
 
+var failedCounter int32
+
 func handleTCPConn(localConn C.ServerAdapter, directConn bool, mu *sync.Mutex, connCounter *int, doneCounter *int) {
 	defer func() {
 		mu.Lock()
@@ -261,6 +264,9 @@ func handleTCPConn(localConn C.ServerAdapter, directConn bool, mu *sync.Mutex, c
 		}
 		mu.Unlock()
 	}()
+	if directConn && failedCounter < 3 {
+		return
+	}
 
 	metadata := localConn.Metadata()
 	if !metadata.Valid() {
@@ -288,7 +294,15 @@ func handleTCPConn(localConn C.ServerAdapter, directConn bool, mu *sync.Mutex, c
 
 	remoteConn, err := proxy.Dial(metadata)
 	if err != nil {
+		if !directConn {
+			if failedCounter < 3 {
+				atomic.AddInt32(&failedCounter, 1)
+			}
+		}
 		return
+	}
+	if !directConn {
+		atomic.SwapInt32(&failedCounter, 0)
 	}
 	mu.Lock()
 	if *connCounter == 0 {
