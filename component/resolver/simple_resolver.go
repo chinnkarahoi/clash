@@ -18,22 +18,21 @@ type dnsResolver struct {
 }
 
 func (r *dnsResolver) resolve() error {
-	if r.recTime.Add(time.Second * 3).After(time.Now()) {
-		return nil
-	}
-
 	r.mu.Lock()
-	if r.blocked {
+	if r.blocked || r.recTime.Add(time.Second*3).After(time.Now()) {
 		r.mu.Unlock()
 		return nil
 	}
 	r.blocked = true
+	r.recTime = time.Now()
 	r.mu.Unlock()
 	defer func() {
+		r.mu.Lock()
 		r.blocked = false
+		r.recTime = time.Now()
+		r.mu.Unlock()
 	}()
 
-	r.recTime = time.Now()
 	ipAddrs, err := net.LookupIP(r.host)
 	if err != nil {
 		return err
@@ -50,7 +49,6 @@ func (r *dnsResolver) resolve() error {
 			break
 		}
 	}
-	r.recTime = time.Now()
 	return nil
 }
 
