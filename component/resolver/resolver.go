@@ -52,17 +52,13 @@ func ResolveIPv4(host string) (net.IP, error) {
 		return DefaultResolver.ResolveIPv4(host)
 	}
 
-	ipAddrs, err := net.LookupIP(host)
+	ipv4, err := simpleResolver.ResolveIPv4(host)
 	if err != nil {
 		return nil, err
 	}
-
-	for _, ip := range ipAddrs {
-		if ip4 := ip.To4(); ip4 != nil {
-			return ip4, nil
-		}
+	if ipv4 != nil {
+		return ipv4, nil
 	}
-
 	return nil, ErrIPNotFound
 }
 
@@ -90,17 +86,13 @@ func ResolveIPv6(host string) (net.IP, error) {
 		return DefaultResolver.ResolveIPv6(host)
 	}
 
-	ipAddrs, err := net.LookupIP(host)
+	ipv6, err := simpleResolver.ResolveIPv6(host)
 	if err != nil {
 		return nil, err
 	}
-
-	for _, ip := range ipAddrs {
-		if ip.To4() == nil {
-			return ip, nil
-		}
+	if ipv6 != nil {
+		return ipv6, nil
 	}
-
 	return nil, ErrIPNotFound
 }
 
