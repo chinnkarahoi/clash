@@ -111,15 +111,13 @@ func ResolveIP(host string) (net.IP, error) {
 		return ResolveIPv4(host)
 	}
 
-	ip := net.ParseIP(host)
+	ip, err := simpleResolver.ResolveIP(host)
+	if err != nil {
+		return nil, err
+	}
 	if ip != nil {
 		return ip, nil
 	}
 
-	ipAddr, err := net.ResolveIPAddr("ip", host)
-	if err != nil {
-		return nil, err
-	}
-
-	return ipAddr.IP, nil
+	return ip, nil
 }

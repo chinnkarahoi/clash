@@ -12,6 +12,7 @@ type dnsResolver struct {
 	recTime time.Time
 	ipv4    net.IP
 	ipv6    net.IP
+	ip      net.IP
 	host    string
 	mu      sync.Mutex
 	blocked bool
@@ -37,6 +38,11 @@ func (r *dnsResolver) resolve() error {
 	if err != nil {
 		return err
 	}
+	ipAddr, err := net.ResolveIPAddr("ip", r.host)
+	if err != nil {
+		return err
+	}
+	r.ip = ipAddr.IP
 	for _, ip := range ipAddrs {
 		if ip := ip.To4(); ip != nil {
 			r.ipv4 = ip
@@ -76,6 +82,18 @@ func (r *dnsResolver) ResolveIPv6() (net.IP, error) {
 	return r.ipv6, nil
 }
 
+func (r *dnsResolver) ResolveIP() (net.IP, error) {
+	if r.recTime.Add(timeout).Before(time.Now()) {
+		err := r.resolve()
+		if err != nil {
+			return nil, err
+		}
+		return r.ip, nil
+	}
+	go r.resolve()
+	return r.ip, nil
+}
+
 type DnsResolver map[string]*dnsResolver
 
 func (r DnsResolver) getResolver(host string) *dnsResolver {
@@ -88,11 +106,27 @@ func (r DnsResolver) getResolver(host string) *dnsResolver {
 }
 
 func (r DnsResolver) ResolveIPv4(host string) (net.IP, error) {
+	ip := net.ParseIP(host)
+	if ip != nil {
+		return ip, nil
+	}
 	return r.getResolver(host).ResolveIPv4()
 }
 
 func (r DnsResolver) ResolveIPv6(host string) (net.IP, error) {
+	ip := net.ParseIP(host)
+	if ip != nil {
+		return ip, nil
+	}
 	return r.getResolver(host).ResolveIPv6()
+}
+
+func (r DnsResolver) ResolveIP(host string) (net.IP, error) {
+	ip := net.ParseIP(host)
+	if ip != nil {
+		return ip, nil
+	}
+	return r.getResolver(host).ResolveIP()
 }
 
 var simpleResolver = make(DnsResolver)
