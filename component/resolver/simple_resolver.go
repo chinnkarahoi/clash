@@ -15,24 +15,20 @@ type dnsResolver struct {
 	ip      net.IP
 	host    string
 	mu      sync.Mutex
-	blocked bool
 }
 
 func (r *dnsResolver) resolve() error {
-	r.mu.Lock()
-	if r.blocked || r.recTime.Add(time.Second*3).After(time.Now()) {
-		r.mu.Unlock()
+	if r.recTime.Add(time.Second * 3).After(time.Now()) {
 		return nil
 	}
-	r.blocked = true
-	r.recTime = time.Now()
-	r.mu.Unlock()
+	r.mu.Lock()
 	defer func() {
-		r.mu.Lock()
-		r.blocked = false
 		r.recTime = time.Now()
 		r.mu.Unlock()
 	}()
+	if r.recTime.Add(time.Second * 3).After(time.Now()) {
+		return nil
+	}
 
 	ipAddrs, err := net.LookupIP(r.host)
 	if err != nil {
